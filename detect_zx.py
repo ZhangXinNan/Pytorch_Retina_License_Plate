@@ -16,6 +16,10 @@ import torchvision
 print(torch.__version__, torchvision.__version__)
 
 
+CARD_WIDTH = 1024
+CARD_HEIGHT = 640
+
+
 def get_args():
     parser = argparse.ArgumentParser(description='RetinaPL')
     # 23 good
@@ -161,6 +165,7 @@ def main(args):
         # show image
         if args.save_image:
             for b in dets:
+                print(b)
                 if b[4] < args.vis_thres:
                     continue
                 text = "{:.4f}".format(b[4])
@@ -171,7 +176,6 @@ def main(args):
                 cy = b[1] + 12
                 cv2.putText(img_raw, text, (cx, cy),
                             cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
-
                 # landms
                 cv2.circle(img_raw, (b[5], b[6]), 1, (0, 0, 255), 4)
                 cv2.circle(img_raw, (b[7], b[8]), 1, (0, 255, 255), 4)
@@ -187,10 +191,14 @@ def main(args):
                 # cv2.imshow("img_box",img_box)  
                 # print('+++',b[9],b[10])
                 
-                new_x1, new_y1 = b[9] - x1, b[10] - y1
-                new_x2, new_y2 = b[11] - x1, b[12] - y1
-                new_x3, new_y3 = b[7] - x1, b[8] - y1
-                new_x4, new_y4 = b[5] - x1, b[6] - y1
+                # new_x1, new_y1 = b[9] - x1, b[10] - y1
+                # new_x2, new_y2 = b[11] - x1, b[12] - y1
+                # new_x3, new_y3 = b[7] - x1, b[8] - y1
+                # new_x4, new_y4 = b[5] - x1, b[6] - y1
+                new_x1, new_y1 = b[5] - x1, b[6] - y1
+                new_x2, new_y2 = b[7] - x1, b[8] - y1
+                new_x3, new_y3 = b[9] - x1, b[10] - y1
+                new_x4, new_y4 = b[11] - x1, b[12] - y1
                 print(new_x1, new_y1)
                 print(new_x2, new_y2)
                 print(new_x3, new_y3)
@@ -198,13 +206,13 @@ def main(args):
                         
                 # 定义对应的点
                 points1 = np.float32([[new_x1, new_y1], [new_x2, new_y2], [new_x3, new_y3], [new_x4, new_y4]])
-                points2 = np.float32([[0, 0], [94, 0], [0, 24], [94, 24]])
+                points2 = np.float32([[0, 0], [CARD_WIDTH, 0], [CARD_WIDTH, CARD_HEIGHT], [0, CARD_HEIGHT]])
                 
                 # 计算得到转换矩阵
                 M = cv2.getPerspectiveTransform(points1, points2)
                 
                 # 实现透视变换转换
-                processed = cv2.warpPerspective(img_box, M, (94, 24))
+                processed = cv2.warpPerspective(img_box, M, (CARD_WIDTH, CARD_HEIGHT))
                 
                 # 显示原图和处理后的图像
                 # cv2.imshow("processed", processed)
