@@ -1,5 +1,7 @@
 from __future__ import print_function
 import os
+
+import numpy as np
 import torch
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
@@ -12,22 +14,36 @@ import time
 import datetime
 import math
 from models.retina import Retina
+from draw_chart import draw
+
+
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device = torch.device('mps')
+else:
+    device = torch.device('cpu')
+print(device)
 
 
 def get_args():
     parser = argparse.ArgumentParser(description='RetinaLP Training')
     parser.add_argument('--training_dataset',
-                        default='D:\\data_br\\MexicoVotar_20240524_2222_train_val\\val.txt',
+                        default='/Users/zhangxin/data_br/val.txt',
+                        # default='D:\\data_br\\MexicoVotar_20240524_2222_train_val\\val.txt',
                         help='Training dataset directory')
     parser.add_argument('--network', default='mobile0.25', help='Backbone network mobile0.25 or resnet50')
-    parser.add_argument('--num_workers', default=16, type=int, help='Number of workers used in dataloading')
-    parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float, help='initial learning rate')
+    parser.add_argument('--num_workers', default=0, type=int, help='Number of workers used in dataloading')
+    parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float, help='initial learning rate')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
-    parser.add_argument('--resume_net', default=None, help='resume net for retraining')
+    parser.add_argument('--resume_net',
+                        default='weights/mobilenet0.25_epoch_8_white_ccpd.pth',
+                        help='resume net for retraining')
     parser.add_argument('--resume_epoch', default=0, type=int, help='resume iter for retraining')
     parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
     parser.add_argument('--gamma', default=0.1, type=float, help='Gamma update for SGD')
     parser.add_argument('--save_folder', default='./weights_card/', help='Location to save checkpoint models')
+    parser.add_argument('--batch_size', default=2, type=int)
     return parser.parse_args()
 
 
@@ -52,7 +68,10 @@ def train():
         start_iter = args.resume_epoch * epoch_size
     else:
         start_iter = 0
-
+    epoch_list = []
+    loss_list = [[], [], []]
+    fout = open(os.path.join(save_folder, 'loss_chart.txt'), 'w')
+    loss_tmp = [[], [], [], []]
     for iteration in range(start_iter, max_iter):
         if iteration % epoch_size == 0:
             # create batch iterator
@@ -60,6 +79,20 @@ def train():
             # if (epoch % 10 == 0 and epoch > 0) or (epoch % 5 == 0 and epoch > cfg['decay1']):
             torch.save(net.state_dict(), save_folder + cfg['name'] + '_epoch_' + str(epoch) + '_white_ccpd.pth')
             epoch += 1
+            # 打印损失列表
+            if len(loss_tmp[0]) > 0:
+                t0 = np.average(loss_tmp[0])
+                t1 = np.average(loss_tmp[1])
+                t2 = np.average(loss_tmp[2])
+                epoch_list.append(epoch)
+                loss_list[0].append(t0)
+                loss_list[1].append(t1)
+                loss_list[2].append(t2)
+                draw(epoch_list, loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.png'))
+                loss_total = t0 + t1 + t2
+                fout.write(f"{epoch} {t0} {t1} {t2} {loss_total}\n")
+                fout.flush()
+            loss_tmp = [[], [], []]
 
         load_t0 = time.time()
         if iteration in stepvalues:
@@ -68,16 +101,29 @@ def train():
 
         # load train data
         images, targets = next(batch_iterator)
-        if torch.cuda.is_available():
-            images = images.cuda()
-            targets = [anno.cuda() for anno in targets]
-
+        # if torch.cuda.is_available():
+        #     images = images.cuda()
+        #     targets = [anno.cuda() for anno in targets]
+        # else:
+        images = images.to(device)
+        targets = [anno.to(device) for anno in targets]
+        # print(images)
+        # print(type(images), images.shape, images.dtype)
         # forward
         out = net(images)
 
         # backprop
         optimizer.zero_grad()
+        # print(out)
+        # print(priors)
+        # print(targets)
         loss_l, loss_c, loss_landm = criterion(out, priors, targets)
+        # 保存损失到列表里
+        if iteration % epoch_size == 0:
+            loss_tmp[0].append(loss_l.item())
+            loss_tmp[1].append(loss_c.item())
+            loss_tmp[2].append(loss_landm.item())
+
         loss = cfg['loc_weight'] * loss_l + loss_c + loss_landm
         loss.backward()
         optimizer.step()
@@ -90,6 +136,7 @@ def train():
 
     torch.save(net.state_dict(), save_folder + cfg['name'] + '_Final.pth')
     # torch.save(net.state_dict(), save_folder + 'Final_Retinaface.pth')
+    fout.close()
 
 
 def adjust_learning_rate(optimizer, gamma, epoch, step_index, iteration, epoch_size):
@@ -107,7 +154,6 @@ def adjust_learning_rate(optimizer, gamma, epoch, step_index, iteration, epoch_s
     return lr
 
 
-
 # def main(args):
 if __name__ == '__main__':
     args = get_args()
@@ -123,7 +169,8 @@ if __name__ == '__main__':
     num_classes = 2
     img_dim = cfg['image_size']
     num_gpu = cfg['ngpu']
-    batch_size = cfg['batch_size']
+    # batch_size = cfg['batch_size']
+    batch_size = args.batch_size
     max_epoch = cfg['epoch']
     gpu_train = cfg['gpu_train']
     if not torch.cuda.is_available():
@@ -140,11 +187,10 @@ if __name__ == '__main__':
 
     net = Retina(cfg=cfg)
     print("Printing net...")
-    print(net)
 
     if args.resume_net is not None:
         print('Loading resume network...')
-        state_dict = torch.load(args.resume_net)
+        state_dict = torch.load(args.resume_net, map_location=device)
         # create new OrderedDict that does not contain `module.`
         from collections import OrderedDict
         new_state_dict = OrderedDict()
@@ -159,9 +205,10 @@ if __name__ == '__main__':
 
     if num_gpu > 1 and gpu_train:
         net = torch.nn.DataParallel(net).cuda()
-    elif torch.cuda.is_available():
-        net = net.cuda()
-
+    else:
+        net = net.to(device)
+    # elif torch.cuda.is_available():
+    #     net = net.cuda()
     cudnn.benchmark = True
 
     optimizer = optim.SGD(net.parameters(), lr=initial_lr, momentum=momentum, weight_decay=weight_decay)
@@ -170,8 +217,9 @@ if __name__ == '__main__':
     priorbox = PriorBox(cfg, image_size=(img_dim, img_dim))
     with torch.no_grad():
         priors = priorbox.forward()
-        if torch.cuda.is_available():
-            priors = priors.cuda()
+        # if torch.cuda.is_available():
+        #     priors = priors.cuda()
+    priors = priors.to(device)
     train()
 # if __name__ == '__main__':
     # train()

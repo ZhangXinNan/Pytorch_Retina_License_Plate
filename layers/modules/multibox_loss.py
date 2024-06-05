@@ -5,6 +5,13 @@ from torch.autograd import Variable
 from utils.box_utils import match, log_sum_exp
 from data import cfg_mnet
 GPU = cfg_mnet['gpu_train']
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device = torch.device('mps')
+else:
+    device = torch.device('cpu')
+
 
 class MultiBoxLoss(nn.Module):
     """SSD Weighted Loss Function
@@ -70,12 +77,18 @@ class MultiBoxLoss(nn.Module):
             landms = targets[idx][:, 4:12].data
             defaults = priors.data
             match(self.threshold, truths, defaults, self.variance, labels, landms, loc_t, conf_t, landm_t, idx)
-        if GPU:
+        '''
+        if GPU and torch.cuda.is_available():
             loc_t = loc_t.cuda()
             conf_t = conf_t.cuda()
             landm_t = landm_t.cuda()
+        '''
+        loc_t = loc_t.to(device)
+        conf_t = conf_t.to(device)
+        landm_t = landm_t.to(device)
 
-        zeros = torch.tensor(0).cuda()
+        zeros = torch.tensor(0)
+        zeros = zeros.to(device)
         # landm Loss (Smooth L1)
         # Shape: [batch,num_priors,10]
         pos1 = conf_t > zeros
