@@ -5,7 +5,8 @@ import os
 import torch
 import torch.backends.cudnn as cudnn
 import numpy as np
-from data import cfg_mnet, cfg_re50
+# from data import cfg_mnet, cfg_re50
+from data import cfg_mnet_zx as cfg_mnet, cfg_re50_zx as cfg_re50
 from layers.functions.prior_box import PriorBox
 from utils.nms.py_cpu_nms import py_cpu_nms
 import cv2
@@ -34,7 +35,7 @@ def get_args():
     parser.add_argument('-s', '--save_image', action="store_true", default=True, help='show detection results')
     parser.add_argument('--vis_thres', default=0.5, type=float, help='visualization_threshold')
     parser.add_argument('-image', default='test_images/0.jpg', help='test image path')
-    parser.add_argument('--out_dir', default='test_images_result/')
+    parser.add_argument('--out_dir', default='test_images_result/512-320')
     args = parser.parse_args()
     return args
 
@@ -102,7 +103,22 @@ def main(args):
     for i in range(1):
         
         img_raw = cv2.imread(args.image, cv2.IMREAD_COLOR)
-
+        h, w = img_raw.shape[:2]
+        resize = cfg['image_size'] / min(h, w)
+        new_h, new_w = int(h * resize), int(w * resize)
+        img_raw = cv2.resize(img_raw, (new_w, new_h))
+        '''
+        resize = cfg['image_size'] / max(h, w)
+        new_h, new_w = int(h * resize), int(w * resize)
+        img_raw = cv2.resize(img_raw, (new_w, new_h))
+        img_square = np.zeros((max(new_w, new_h), max(new_w, new_h), 3), np.uint8)
+        img_square[:new_h, :new_w, :] = img_raw
+        img_raw = img_square
+        cv2.imwrite("img_square.jpg", img_raw)
+        '''
+        # img_raw = cv2.resize(img_raw, (cfg['image_size'], cfg['image_size']))
+        # resize_wh = (cfg['image_size'] / w, cfg['image_size'] / h)
+        # print("resize_wh : ", resize_wh)
         img = np.float32(img_raw)
         print(args.image, img.shape, img.dtype)
         im_height, im_width, _ = img.shape
@@ -112,6 +128,7 @@ def main(args):
         img = torch.from_numpy(img).unsqueeze(0)
         img = img.to(device)
         scale = scale.to(device)
+        print(img.shape)
 
         tic = time.time()
         loc, conf, landms = net(img)  # forward pass
@@ -122,20 +139,37 @@ def main(args):
         priorbox = PriorBox(cfg, image_size=(im_height, im_width))
         priors = priorbox.forward()
         priors = priors.to(device)
+        print(type(priors), priors.shape, type(priors.data), priors.data.shape)
+        print("priors:", priors)
         prior_data = priors.data
+        print("prior_data:", prior_data)
         boxes = decode(loc.data.squeeze(0), prior_data, cfg['variance'])
+        # boxes = boxes * scale / resize
+        # resize = torch.Tensor([resize_wh[0], resize_wh[1], resize_wh[0], resize_wh[1]])
         boxes = boxes * scale / resize
         boxes = boxes.cpu().numpy()
+        print("boxes : ", boxes)
+        # boxes[:, 0] /= resize_wh[0]
+        # boxes[:, 1] /= resize_wh[1]
+        # boxes[:, 2] /= resize_wh[0]
+        # boxes[:, 3] /= resize_wh[1]
+        # print("boxes : ", boxes)
         
         scores = conf.squeeze(0).data.cpu().numpy()[:, 1]
         
         landms = decode_landm(landms.data.squeeze(0), prior_data, cfg['variance'])
         scale1 = torch.Tensor([img.shape[3], img.shape[2], img.shape[3], img.shape[2],
-                               img.shape[3], img.shape[2],
-                               img.shape[3], img.shape[2]])
+                               img.shape[3], img.shape[2], img.shape[3], img.shape[2]])
         scale1 = scale1.to(device)
+        # resize = torch.Tensor([resize_wh[0], resize_wh[1], resize_wh[0], resize_wh[1],
+        #                        resize_wh[0], resize_wh[1], resize_wh[0], resize_wh[1]])
         landms = landms * scale1 / resize
         landms = landms.cpu().numpy()
+        print("landms : ", landms)
+        # for i in range(4):
+        #     landms[2 * i] /= resize_wh[0]
+        #     landms[2 * i + 1] /= resize_wh[1]
+        # print("landms : ", landms)
 
         # ignore low scores
         inds = np.where(scores > args.confidence_threshold)[0]
@@ -164,7 +198,8 @@ def main(args):
         print('priorBox time: {:.4f}'.format(time.time() - tic))
         # show image
         if args.save_image:
-            for b in dets:
+            img_raw = cv2.imread(args.image, cv2.IMREAD_COLOR)
+            for j, b in enumerate(dets):
                 print(b)
                 if b[4] < args.vis_thres:
                     continue
@@ -212,16 +247,18 @@ def main(args):
                 M = cv2.getPerspectiveTransform(points1, points2)
                 
                 # 实现透视变换转换
-                processed = cv2.warpPerspective(img_box, M, (CARD_WIDTH, CARD_HEIGHT))
+                processed = cv2.warpPerspective(img_raw, M, (CARD_WIDTH, CARD_HEIGHT))
                 
                 # 显示原图和处理后的图像
                 # cv2.imshow("processed", processed)
                 # save image
                 # name = "test.jpg"
                 name = os.path.basename(args.image)
-                cv2.imwrite(os.path.join(args.out_dir, name + ".processed.jpg"), processed)
-                cv2.imwrite(os.path.join(args.out_dir, name + ".show.jpg"), img_raw)
-                cv2.imwrite(os.path.join(args.out_dir, name + ".box.jpg"), img_box)
+                # cv2.imwrite(os.path.join(args.out_dir, name + f".{j}.processed.jpg"), processed)
+                # cv2.imwrite(os.path.join(args.out_dir, name + f".{j}.show.jpg"), img_raw)
+                # cv2.imwrite(os.path.join(args.out_dir, name + f".{j}.box.jpg"), img_box)
+            name = os.path.basename(args.image)
+            cv2.imwrite(os.path.join(args.out_dir,  f"{name}.show.minsize-640.jpg"), img_raw)
             # cv2.imshow('image', img_raw)
             # if cv2.waitKey(1000000) & 0xFF == ord('q'):
             #     cv2.destroyAllWindows()

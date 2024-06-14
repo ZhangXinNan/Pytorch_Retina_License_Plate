@@ -39,11 +39,15 @@ def set_device(gpu_id=0):
 def get_args():
     parser = argparse.ArgumentParser(description='RetinaLP Training')
     parser.add_argument('--training_dataset',
-                        default='/home/xin.zhang6/data_br/val.txt',
+                        # default='/home/xin.zhang6/data_br/val.txt',
+                        default='D:\\data_br\\MexicoVotar_20240524_2222_train_val\\val.txt',
                         help='Training dataset directory')
-    parser.add_argument('--validation_dataset', default='/home/xin.zhang6/data_br/test.txt')
+    parser.add_argument('--validation_dataset',
+                        # default='/home/xin.zhang6/data_br/test.txt',
+                        default='D:\\data_br\\MexicoVotar_20240524_2222_train_val\\test.txt'
+                        )
     parser.add_argument('--network', default='mobile0.25', help='Backbone network mobile0.25 or resnet50')
-    parser.add_argument('--num_workers', default=4, type=int, help='Number of workers used in dataloading')
+    parser.add_argument('--num_workers', default=0, type=int, help='Number of workers used in dataloading')
     parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float, help='initial learning rate')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
     parser.add_argument('--resume_net',
@@ -52,8 +56,8 @@ def get_args():
     parser.add_argument('--resume_epoch', default=0, type=int, help='resume iter for retraining')
     parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
     parser.add_argument('--gamma', default=0.1, type=float, help='Gamma update for SGD')
-    parser.add_argument('--save_folder', default='./weights_card/', help='Location to save checkpoint models')
-    parser.add_argument('--batch_size', default=16, type=int)
+    parser.add_argument('--save_folder', default='./weights_card_20240614_512_320/', help='Location to save checkpoint models')
+    parser.add_argument('--batch_size', default=4, type=int)
     return parser.parse_args()
 
 
@@ -67,12 +71,13 @@ def train():
     print('batch_size', batch_size)
     epoch_size = math.ceil(len(dataset) / batch_size)
     iteration = 0
+    max_epoch = 100
     max_iter = max_epoch * epoch_size
     print('epoch_size', epoch_size)
     # print('max_iter', max_iter)
 
-    stepvalues = (cfg['decay1'] * epoch_size, cfg['decay2'] * epoch_size)
-    step_index = 0
+    # stepvalues = (cfg['decay1'] * epoch_size, cfg['decay2'] * epoch_size)
+    # step_index = 0
 
     # if args.resume_epoch > 0:
     #     start_iter = args.resume_epoch * epoch_size
@@ -140,8 +145,12 @@ def train():
             min_val_loss = val_loss_epoch[-1]
             torch.save(net.state_dict(), save_folder + cfg['name'] + '_epoch_' + str(epoch) + '_card.pth')
         # 画loss变换曲线，并输出到txt里
-        draw(epoch_list, loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.png'))
-        draw(epoch_list, val_loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.val.png'))
+        # draw(epoch_list, loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.png'))
+        # draw(epoch_list, val_loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.val.png'))
+        draw(epoch_list, [loss_list[0], val_loss_list[0]], ['l-train', 'l-val'], os.path.join(save_folder, f'loss_chart.{epoch}.l.png'))
+        draw(epoch_list, [loss_list[1], val_loss_list[1]], ['c-train', 'c-val'], os.path.join(save_folder, f'loss_chart.{epoch}.c.png'))
+        draw(epoch_list, [loss_list[2], val_loss_list[2]], ['landm-train', 'landm-val'], os.path.join(save_folder, f'loss_chart.{epoch}.landm.png'))
+        draw(epoch_list, [loss_list[3], val_loss_list[3]], ['loss-train', 'loss-val'], os.path.join(save_folder, f'loss_chart.{epoch}.loss.png'))
         if len(epoch_list) >= 10:
             draw(epoch_list[-10:], [l[-10:] for l in loss_list], ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.last10.png'))
             draw(epoch_list[-10:], [l[-10:] for l in val_loss_list], ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.val.last10.png'))

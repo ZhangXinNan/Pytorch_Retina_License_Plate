@@ -24,6 +24,7 @@ cfg_mnet = {
 cfg_mnet_zx = {
     'name': 'mobilenet0.25',
     'min_sizes': [[16, 32], [64, 128], [256, 512]],
+    # 'min_sizes': [[160, 256], [240, 384], [320, 512]],
     'steps': [8, 16, 32],
     'variance': [0.1, 0.2],
     'clip': False,
@@ -64,3 +65,22 @@ cfg_re50 = {
     'out_channel': 256
 }
 
+cfg_re50_zx = {
+    'name': 'Resnet50',
+    'min_sizes': [[16, 32], [64, 128], [256, 512]],
+    'steps': [8, 16, 32],
+    'variance': [0.1, 0.2],
+    'clip': False,
+    'loc_weight': 2.0,
+    'gpu_train': True,
+    'batch_size': 24,
+    'ngpu': 4,
+    'epoch': 100,
+    'decay1': 70,
+    'decay2': 90,
+    'image_size': 840,
+    'pretrain': True,
+    'return_layers': {'layer2': 1, 'layer3': 2, 'layer4': 3},
+    'in_channel': 256,
+    'out_channel': 256
+}
