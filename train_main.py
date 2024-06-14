@@ -71,7 +71,6 @@ def train():
     print('batch_size', batch_size)
     epoch_size = math.ceil(len(dataset) / batch_size)
     iteration = 0
-    max_epoch = 100
     max_iter = max_epoch * epoch_size
     print('epoch_size', epoch_size)
     # print('max_iter', max_iter)
@@ -147,10 +146,10 @@ def train():
         # 画loss变换曲线，并输出到txt里
         # draw(epoch_list, loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.png'))
         # draw(epoch_list, val_loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.val.png'))
-        draw(epoch_list, [loss_list[0], val_loss_list[0]], ['l-train', 'l-val'], os.path.join(save_folder, f'loss_chart.{epoch}.l.png'))
-        draw(epoch_list, [loss_list[1], val_loss_list[1]], ['c-train', 'c-val'], os.path.join(save_folder, f'loss_chart.{epoch}.c.png'))
-        draw(epoch_list, [loss_list[2], val_loss_list[2]], ['landm-train', 'landm-val'], os.path.join(save_folder, f'loss_chart.{epoch}.landm.png'))
-        draw(epoch_list, [loss_list[3], val_loss_list[3]], ['loss-train', 'loss-val'], os.path.join(save_folder, f'loss_chart.{epoch}.loss.png'))
+        draw2(epoch_list, [loss_list[0], val_loss_list[0]], ['l-train', 'l-val'], os.path.join(save_folder, f'loss_chart.{epoch}.l.png'))
+        draw2(epoch_list, [loss_list[1], val_loss_list[1]], ['c-train', 'c-val'], os.path.join(save_folder, f'loss_chart.{epoch}.c.png'))
+        draw2(epoch_list, [loss_list[2], val_loss_list[2]], ['landm-train', 'landm-val'], os.path.join(save_folder, f'loss_chart.{epoch}.landm.png'))
+        draw2(epoch_list, [loss_list[3], val_loss_list[3]], ['loss-train', 'loss-val'], os.path.join(save_folder, f'loss_chart.{epoch}.loss.png'))
         if len(epoch_list) >= 10:
             draw(epoch_list[-10:], [l[-10:] for l in loss_list], ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.last10.png'))
             draw(epoch_list[-10:], [l[-10:] for l in val_loss_list], ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.val.last10.png'))
@@ -216,7 +215,7 @@ if __name__ == '__main__':
     img_dim = cfg['image_size']
     # num_gpu = cfg['ngpu']
     # batch_size = cfg['batch_size']
-    batch_size = args.batch_size
+    cfg['batch_size'] = batch_size = args.batch_size
     max_epoch = cfg['epoch']
     # gpu_train = cfg['gpu_train']
 
