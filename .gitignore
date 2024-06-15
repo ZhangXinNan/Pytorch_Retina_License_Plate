@@ -4,6 +4,6 @@
 *.py[cod]
 __pycache__/
 .DS_Store
-
+weights_*/
 weights_card*/
 test_images_result/

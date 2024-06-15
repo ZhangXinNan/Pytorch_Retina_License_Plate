@@ -98,11 +98,19 @@ def main(args):
     net = net.to(device)
 
     resize = 1
-
+    img_path_list = []
+    if os.path.isfile(args.image):
+        img_path_list.append(args.image)
+    elif os.path.isdir(args.image):
+        for filename in os.listdir(args.image):
+            name, suffix = os.path.splitext(filename)
+            if suffix.lower() not in ['.jpeg', '.png', '.jpg']:
+                continue
+            img_path_list.append(os.path.join(args.image, filename))
     # testing begin
-    for i in range(1):
+    for img_path in img_path_list:
         
-        img_raw = cv2.imread(args.image, cv2.IMREAD_COLOR)
+        img_raw = cv2.imread(img_path, cv2.IMREAD_COLOR)
         h, w = img_raw.shape[:2]
         resize = cfg['image_size'] / min(h, w)
         new_h, new_w = int(h * resize), int(w * resize)
@@ -120,7 +128,7 @@ def main(args):
         # resize_wh = (cfg['image_size'] / w, cfg['image_size'] / h)
         # print("resize_wh : ", resize_wh)
         img = np.float32(img_raw)
-        print(args.image, img.shape, img.dtype)
+        print(img_path, img.shape, img.dtype)
         im_height, im_width, _ = img.shape
         scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]])
         img -= (104, 117, 123)
@@ -198,7 +206,8 @@ def main(args):
         print('priorBox time: {:.4f}'.format(time.time() - tic))
         # show image
         if args.save_image:
-            img_raw = cv2.imread(args.image, cv2.IMREAD_COLOR)
+            img_raw = cv2.imread(img_path, cv2.IMREAD_COLOR)
+            h, w = img_raw.shape[:2]
             for j, b in enumerate(dets):
                 print(b)
                 if b[4] < args.vis_thres:
@@ -206,17 +215,26 @@ def main(args):
                 text = "{:.4f}".format(b[4])
                 print(text)
                 b = list(map(int, b))
-                cv2.rectangle(img_raw, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), 2)
-                cx = b[0]
-                cy = b[1] + 12
-                cv2.putText(img_raw, text, (cx, cy),
+                for i in [0, 2, 5, 7, 9, 11]:
+                    if b[i] < 0:
+                        b[i] = 0
+                    elif b[i] >= w:
+                        b[i] = w - 1
+                for i in [1, 3, 6, 8, 10, 12]:
+                    if b[i] < 0:
+                        b[i] = 0
+                    elif b[i] >= h:
+                        b[i] = h - 1
+                cv2.rectangle(img_raw, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), 5)
+
+                cv2.putText(img_raw, text, (b[0], b[1] + 12),
                             cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
                 # landms
-                cv2.circle(img_raw, (b[5], b[6]), 1, (0, 0, 255), 4)
-                cv2.circle(img_raw, (b[7], b[8]), 1, (0, 255, 255), 4)
+                cv2.circle(img_raw, (b[5], b[6]), 3, (0, 0, 255), 4)
+                cv2.circle(img_raw, (b[7], b[8]), 3, (0, 255, 255), 4)
                 # cv2.circle(img_raw, (b[9], b[10]), 1, (255, 0, 255), 4)
-                cv2.circle(img_raw, (b[9], b[10]), 1, (0, 255, 0), 4)
-                cv2.circle(img_raw, (b[11], b[12]), 1, (255, 0, 0), 4)
+                cv2.circle(img_raw, (b[9], b[10]), 3, (0, 255, 0), 4)
+                cv2.circle(img_raw, (b[11], b[12]), 3, (255, 0, 0), 4)
                 
                 x1, y1, x2, y2 = b[0], b[1], b[2], b[3]
                 w = int(x2 - x1 + 1.0)
@@ -253,12 +271,12 @@ def main(args):
                 # cv2.imshow("processed", processed)
                 # save image
                 # name = "test.jpg"
-                name = os.path.basename(args.image)
+                name = os.path.basename(img_path)
                 # cv2.imwrite(os.path.join(args.out_dir, name + f".{j}.processed.jpg"), processed)
                 # cv2.imwrite(os.path.join(args.out_dir, name + f".{j}.show.jpg"), img_raw)
                 # cv2.imwrite(os.path.join(args.out_dir, name + f".{j}.box.jpg"), img_box)
-            name = os.path.basename(args.image)
-            cv2.imwrite(os.path.join(args.out_dir,  f"{name}.show.minsize-640.jpg"), img_raw)
+            name = os.path.basename(img_path)
+            cv2.imwrite(os.path.join(args.out_dir, f"{name}.show.minsize-640.jpg"), img_raw)
             # cv2.imshow('image', img_raw)
             # if cv2.waitKey(1000000) & 0xFF == ord('q'):
             #     cv2.destroyAllWindows()

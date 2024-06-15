@@ -10,7 +10,7 @@ import torch.utils.data as data
 from data import WiderLPDetection, detection_collate, preproc
 from data import WiderCardDetection
 from data import cfg_mnet_zx as cfg_mnet
-from data import cfg_re50
+from data import cfg_re50_zx as cfg_re50
 from layers.modules import MultiBoxLoss
 from layers.functions.prior_box import PriorBox
 import time
@@ -142,7 +142,7 @@ def train():
         # 只保存最佳模型（损失最小）
         if val_loss_epoch[-1] < min_val_loss:
             min_val_loss = val_loss_epoch[-1]
-            torch.save(net.state_dict(), save_folder + cfg['name'] + '_epoch_' + str(epoch) + '_card.pth')
+            torch.save(net.state_dict(), os.path.join(save_folder, cfg['name'] + '_epoch_' + str(epoch) + '_card.pth'))
         # 画loss变换曲线，并输出到txt里
         # draw(epoch_list, loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.png'))
         # draw(epoch_list, val_loss_list, ['l', 'c', 'landm'], os.path.join(save_folder, f'loss_chart.{epoch}.val.png'))
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     net = Retina(cfg=cfg)
     print("Printing net...")
 
-    if args.resume_net is not None:
+    if args.resume_net is not None and os.path.isfile(args.resume_net):
         net = resume_model(net, args.resume_net, device)
 
     # if num_gpu > 1 and gpu_train:
