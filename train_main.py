@@ -7,8 +7,9 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import argparse
 import torch.utils.data as data
-from data import WiderLPDetection, detection_collate, preproc
-from data import WiderCardDetection
+from data import detection_collate, preproc
+# from data import WiderCardDetection
+from data import WiderCardSquareDetection as WiderCardDetection
 from data import cfg_mnet_zx as cfg_mnet
 from data import cfg_re50_zx as cfg_re50
 from layers.modules import MultiBoxLoss
@@ -64,12 +65,14 @@ def get_args():
 def train():
     epoch = 0 + args.resume_epoch
     print('Loading Dataset...')
-
     # dataset = WiderLPDetection(training_dataset, preproc(img_dim, rgb_mean))
-    dataset = WiderCardDetection(training_dataset, preproc(img_dim, rgb_mean))
-    print('dataset', len(dataset))
+    dataset_train = WiderCardDetection(args.training_dataset, preproc(img_dim, rgb_mean), train_mode=True)
+    print('dataset', len(dataset_train))
+    print('Loading Dataset...')
+    dataset_val = WiderCardDetection(args.validation_dataset, preproc(img_dim, rgb_mean), train_mode=False)
+    print('dataset', len(dataset_val))
     print('batch_size', batch_size)
-    epoch_size = math.ceil(len(dataset) / batch_size)
+    epoch_size = math.ceil(len(dataset_train) / batch_size)
     iteration = 0
     max_iter = max_epoch * epoch_size
     print('epoch_size', epoch_size)
@@ -91,7 +94,7 @@ def train():
     # for iteration in range(start_iter, max_iter):
         # if iteration % epoch_size == 0:
     for epoch in range(1, max_epoch + 1):
-        training_loader = data.DataLoader(dataset, batch_size, shuffle=True, num_workers=num_workers, collate_fn=detection_collate)
+        training_loader = data.DataLoader(dataset_train, batch_size, shuffle=True, num_workers=num_workers, collate_fn=detection_collate)
         loss_tmp = [[], [], [], []]
         lr = args.lr
         epoch_time0 = time.time()
@@ -131,7 +134,7 @@ def train():
                 .format(epoch, max_epoch, iter, epoch_size, iteration, max_iter, loss_l.item(), loss_c.item(), loss_landm.item(), lr, batch_time))
         epoch_time = time.time() - epoch_time0
         # 每个epoch跑一遍验证集
-        val_loss_epoch, elapse_epoch = validate(net, cfg, args.validation_dataset, device, criterion, priors)
+        val_loss_epoch, elapse_epoch = validate(net, cfg, dataset_val, device, criterion, priors)
         # 打印损失列表
         epoch_list.append(epoch)
         for i in range(4):
@@ -224,7 +227,6 @@ if __name__ == '__main__':
     weight_decay = args.weight_decay
     initial_lr = args.lr
     gamma = args.gamma
-    training_dataset = args.training_dataset
     save_folder = args.save_folder
 
     net = Retina(cfg=cfg)

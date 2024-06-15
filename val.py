@@ -9,12 +9,9 @@ import torch.utils.data as data
 from data import WiderCardDetection, preproc, detection_collate
 
 
-def validate(net, cfg, validation_dataset, device, criterion, priors):
+def validate(net, cfg, dataset, device, criterion, priors):
     net.eval()
-    print('Loading Dataset...')
-    img_dim = cfg['image_size']
-    rgb_mean = cfg['rgb_mean']
-    dataset = WiderCardDetection(validation_dataset, preproc(img_dim, rgb_mean), train_mode=False)
+
     print('dataset', len(dataset))
     batch_size = cfg['batch_size']
     print('batch_size', batch_size)
