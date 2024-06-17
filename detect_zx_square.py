@@ -1,12 +1,13 @@
 from __future__ import print_function
 import argparse
 import os
-
+import random
 import torch
 import torch.backends.cudnn as cudnn
 import numpy as np
 # from data import cfg_mnet, cfg_re50
 from data import cfg_mnet_zx as cfg_mnet, cfg_re50_zx as cfg_re50
+# from data import _pad_to_square, _resize_subtract_mean
 from layers.functions.prior_box import PriorBox
 from utils.nms.py_cpu_nms import py_cpu_nms
 import cv2
@@ -19,6 +20,26 @@ print(torch.__version__, torchvision.__version__)
 
 CARD_WIDTH = 1024
 CARD_HEIGHT = 640
+
+
+def _pad_to_square(image, rgb_mean, pad_image_flag):
+    if not pad_image_flag:
+        return image
+    height, width, _ = image.shape
+    long_side = max(width, height)
+    image_t = np.empty((long_side, long_side, 3), dtype=image.dtype)
+    image_t[:, :] = rgb_mean
+    image_t[0:0 + height, 0:0 + width] = image
+    return image_t
+
+
+def _resize_subtract_mean(image, insize, rgb_mean):
+    interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
+    interp_method = interp_methods[random.randrange(5)]
+    image = cv2.resize(image, (insize, insize), interpolation=interp_method)
+    image = image.astype(np.float32)
+    image -= rgb_mean
+    return image.transpose(2, 0, 1)
 
 
 def get_args():
@@ -76,20 +97,24 @@ def load_model(model, pretrained_path, load_to_cpu):
     return model
 
 
-def change_square(img):
+def change_square(img, rgb_mean=(104, 117, 123)):
     h0, w0 = img.shape[:2]
     x0, y0 = 0, 0
     if h0 == w0:
         return img
     elif h0 > w0:
         img_square = np.zeros((h0, h0, 3), dtype=np.uint8)
-        x0 = (h0 - w0) // 2
-        img_square[:, x0:x0+w0, :] = img
+        img_square[:, :] = rgb_mean
+        # x0 = (h0 - w0) // 2
+        # img_square[:, x0:x0+w0, :] = img
+        img_square[:h0, :w0] = img
         return img_square
     elif w0 > h0:
         img_square = np.zeros((w0, w0, 3), dtype=np.uint8)
-        y0 = (w0 - h0) // 2
-        img_square[y0:y0+h0, :, :] = img
+        img_square[:, :] = rgb_mean
+        # y0 = (w0 - h0) // 2
+        # img_square[y0:y0+h0, :, :] = img
+        img_square[:h0, :w0] = img
         return img_square
     return img
 
@@ -114,6 +139,7 @@ def main(args):
     cudnn.benchmark = True
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net = net.to(device)
+    rgb_mean = cfg['rgb_mean']
 
     resize = 1
     img_path_list = []
@@ -129,11 +155,12 @@ def main(args):
     for img_path in img_path_list:
         
         img_raw = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        img_raw = change_square(img_raw)
         h, w = img_raw.shape[:2]
-        resize = cfg['image_size'] / min(h, w)
+        resize = cfg['image_size'] / max(h, w)
         new_h, new_w = int(h * resize), int(w * resize)
         img_raw = cv2.resize(img_raw, (new_w, new_h))
+        # img_raw = change_square(img_raw)
+        im_height, im_width, _ = img_raw.shape
         '''
         resize = cfg['image_size'] / max(h, w)
         new_h, new_w = int(h * resize), int(w * resize)
@@ -147,11 +174,13 @@ def main(args):
         # resize_wh = (cfg['image_size'] / w, cfg['image_size'] / h)
         # print("resize_wh : ", resize_wh)
         img = np.float32(img_raw)
-        print(img_path, img.shape, img.dtype)
-        im_height, im_width, _ = img.shape
+        # print(img_path, img.shape, img.dtype)
         scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]])
         img -= (104, 117, 123)
         img = img.transpose(2, 0, 1)
+        # img = _pad_to_square(img, rgb_mean, True)
+        # img = _resize_subtract_mean(img, cfg['image_size'], rgb_mean)
+        # im_height, im_width, _ = img.shape # 解决问题：The size of tensor a 16800 must match the size of tensor b 96480
         img = torch.from_numpy(img).unsqueeze(0)
         img = img.to(device)
         scale = scale.to(device)

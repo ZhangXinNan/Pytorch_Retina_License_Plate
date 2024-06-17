@@ -8,8 +8,9 @@ import torch.backends.cudnn as cudnn
 import argparse
 import torch.utils.data as data
 from data import detection_collate, preproc
-# from data import WiderCardDetection
-from data import WiderCardSquareDetection as WiderCardDetection
+from data import WiderCardDetection
+# from data import WiderCardSquareDetection as WiderCardDetection
+# from data import WiderVoterCardDetection as WiderCardDetection
 from data import cfg_mnet_zx as cfg_mnet
 from data import cfg_re50_zx as cfg_re50
 from layers.modules import MultiBoxLoss

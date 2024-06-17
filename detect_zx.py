@@ -112,7 +112,7 @@ def main(args):
         
         img_raw = cv2.imread(img_path, cv2.IMREAD_COLOR)
         h, w = img_raw.shape[:2]
-        resize = cfg['image_size'] / min(h, w)
+        resize = cfg['image_size'] / max(h, w)
         new_h, new_w = int(h * resize), int(w * resize)
         img_raw = cv2.resize(img_raw, (new_w, new_h))
         '''
@@ -276,7 +276,7 @@ def main(args):
                 # cv2.imwrite(os.path.join(args.out_dir, name + f".{j}.show.jpg"), img_raw)
                 # cv2.imwrite(os.path.join(args.out_dir, name + f".{j}.box.jpg"), img_box)
             name = os.path.basename(img_path)
-            cv2.imwrite(os.path.join(args.out_dir, f"{name}.show.minsize-640.jpg"), img_raw)
+            cv2.imwrite(os.path.join(args.out_dir, f"{name}.show.jpg"), img_raw)
             # cv2.imshow('image', img_raw)
             # if cv2.waitKey(1000000) & 0xFF == ord('q'):
             #     cv2.destroyAllWindows()

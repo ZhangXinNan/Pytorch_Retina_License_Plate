@@ -218,7 +218,14 @@ class preproc(object):
         labels = targets[:, -1].copy()
         landm = targets[:, 4:-1].copy()
 
-        image_t, boxes_t, labels_t, landm_t, pad_image_flag = _crop(image, boxes, labels, landm, self.img_dim)
+        # image_t, boxes_t, labels_t, landm_t, pad_image_flag = _crop(image, boxes, labels, landm, self.img_dim)
+        # '''
+        image_t = image.copy()
+        boxes_t = boxes.copy()
+        labels_t = labels.copy()
+        landm_t = landm.copy()
+        pad_image_flag = True
+        # '''
         # image_t = _distort(image_t)
         image_t = _pad_to_square(image_t, self.rgb_means, pad_image_flag)
         # image_t, boxes_t, landm_t = _mirror(image_t, boxes_t, landm_t)

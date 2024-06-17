@@ -1,4 +1,4 @@
-
+import os
 import random
 import torch
 import torch.utils.data as data
@@ -101,6 +101,14 @@ class WiderCardSquareDetection(data.Dataset):
         labels = self.words[index]
         # print(self.imgs_path[index], img.shape, labels)
 
+        img_square = np.empty((w0 + h0, w0 + h0, 3), dtype=np.uint8)
+        img_square[:, :] = (104, 117, 123)
+        x0 = h0 // 2
+        y0 = w0 // 2
+        img_square[y0:y0+h0, x0:x0+w0] = img
+        # cv2.imwrite(os.path.basename(self.imgs_path[index]) + '.square.jpg', img_square)
+        # print(img_square.shape)
+        '''
         if h0 > w0:
             img_square = np.zeros((h0, h0, 3), dtype=np.uint8)
             x0 = (h0 - w0) // 2
@@ -111,8 +119,9 @@ class WiderCardSquareDetection(data.Dataset):
             y0 = (w0 - h0) // 2
             img_square[y0:y0+h0, :, :] = img
             img = img_square
-
+        '''
         for j in range(len(labels)):
+            '''
             if h0 > w0:
                 x0 = (h0 - w0) // 2
                 for i in range(2, 14, 2):
@@ -121,8 +130,12 @@ class WiderCardSquareDetection(data.Dataset):
                 y0 = (w0 - h0) // 2
                 for i in range(3, 14, 2):
                     labels[j][i] += y0
+            '''
+            for i in range(2, 14, 2):
+                labels[j][i] += x0
+                labels[j][i + 1] += y0
         # print(self.imgs_path[index], img.shape, labels)
-
+        '''
         if self.train_mode:
             rand_number = random.randint(0, 99) % 4
             if rand_number == 0:
@@ -131,12 +144,13 @@ class WiderCardSquareDetection(data.Dataset):
                 img = cv2.rotate(img, 1)
             elif rand_number == 2:
                 img = cv2.rotate(img, 2)
-
+        '''
         annotations = np.zeros((0, 13))
         if len(labels) == 0:
             return annotations
         
         for idx, label in enumerate(labels):
+            '''
             if self.train_mode:
                 if rand_number == 0:
                     annotation = rot_90(label, h0, w0)
@@ -147,41 +161,32 @@ class WiderCardSquareDetection(data.Dataset):
                 else:
                     annotation = rot_0(label)
             else:
-                annotation = rot_0(label)
+            '''
+            annotation = rot_0(label)
             if (label[0] < 0):
                 annotation[0, 12] = -1
             else:
                 annotation[0, 12] = 1 
             annotations = np.append(annotations, annotation, axis=0)
         target = np.array(annotations).astype(np.float64)
-        
+        # print(target)
         if self.preproc is not None:
             img, target = self.preproc(img, target)
+        # print(img.shape)
+        # print(target)
         return torch.from_numpy(img), target
 
 
-def detection_collate(batch):
-    """Custom collate fn for dealing with batches of images that have a different
-    number of associated object annotations (bounding boxes).
-
-    Arguments:
-        batch: (tuple) A tuple of tensor images and lists of annotations
-
-    Return:
-        A tuple containing:
-            1) (tensor) batch of images stacked on their 0 dim
-            2) (list of tensors) annotations for a given image are stacked on 0 dim
-    """
-    targets = []
-    imgs = []
-    for _, sample in enumerate(batch):
-        for _, tup in enumerate(sample):
-            if torch.is_tensor(tup):
-                imgs.append(tup)
-            elif isinstance(tup, type(np.empty(0))):
-                annos = torch.from_numpy(tup).float()
-                targets.append(annos)
-
-    return (torch.stack(imgs, 0), targets)
-
-
+if __name__ == '__main__':
+    from data import detection_collate, preproc
+    training_dataset = '/home/xin.zhang6/data_br/val.txt'
+    img_dim = 640
+    rgb_mean = (104, 117, 123)
+    dataset_train = WiderCardSquareDetection(training_dataset, preproc(img_dim, rgb_mean), train_mode=True)
+    print('dataset', len(dataset_train))
+    batch_size = 2
+    training_loader = data.DataLoader(dataset_train, batch_size, shuffle=True, num_workers=0, collate_fn=detection_collate)
+    for images, targets in training_loader:
+        print(images.shape)
+        print(targets.shape)
+        break
