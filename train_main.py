@@ -8,9 +8,9 @@ import torch.backends.cudnn as cudnn
 import argparse
 import torch.utils.data as data
 from data import detection_collate, preproc
-from data import WiderCardDetection
+# from data import WiderCardDetection
 # from data import WiderCardSquareDetection as WiderCardDetection
-# from data import WiderVoterCardDetection as WiderCardDetection
+from data import WiderVoterCardDetection as WiderCardDetection
 from data import cfg_mnet_zx as cfg_mnet
 from data import cfg_re50_zx as cfg_re50
 from layers.modules import MultiBoxLoss
@@ -60,6 +60,7 @@ def get_args():
     parser.add_argument('--gamma', default=0.1, type=float, help='Gamma update for SGD')
     parser.add_argument('--save_folder', default='./weights_card_20240614_512_320/', help='Location to save checkpoint models')
     parser.add_argument('--batch_size', default=4, type=int)
+    parser.add_argument('--image_size', default=640, type=int)
     return parser.parse_args()
 
 
@@ -216,7 +217,7 @@ if __name__ == '__main__':
     # rgb_mean = (104, 117, 123)  # bgr order
     rgb_mean = cfg['rgb_mean']
     num_classes = 2
-    img_dim = cfg['image_size']
+    img_dim = cfg['image_size'] = args.image_size
     # num_gpu = cfg['ngpu']
     # batch_size = cfg['batch_size']
     cfg['batch_size'] = batch_size = args.batch_size

@@ -36,6 +36,7 @@ def get_args():
     parser.add_argument('--vis_thres', default=0.5, type=float, help='visualization_threshold')
     parser.add_argument('-image', default='test_images/0.jpg', help='test image path')
     parser.add_argument('--out_dir', default='test_images_result/512-320')
+    parser.add_argument('--image_size', default=640, type=int)
     args = parser.parse_args()
     return args
 
@@ -86,6 +87,7 @@ def main(args):
         cfg = cfg_mnet
     elif args.network == "resnet50":
         cfg = cfg_re50
+    cfg['image_size'] = args.image_size
     # net and model
     net = Retina(cfg=cfg, phase='test')
     # net = load_model(net, args.trained_model, args.cpu)
