@@ -232,12 +232,16 @@ def main(args):
                 cv2.putText(img_raw, text, (b[0], b[1] + 12),
                             cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
                 # landms
-                cv2.circle(img_raw, (b[5], b[6]), 3, (0, 0, 255), 4)
-                cv2.circle(img_raw, (b[7], b[8]), 3, (0, 255, 255), 4)
-                # cv2.circle(img_raw, (b[9], b[10]), 1, (255, 0, 255), 4)
-                cv2.circle(img_raw, (b[9], b[10]), 3, (0, 255, 0), 4)
-                cv2.circle(img_raw, (b[11], b[12]), 3, (255, 0, 0), 4)
-                
+                thickness = 6
+                cv2.circle(img_raw, (b[5], b[6]), 3, (0, 0, 255), thickness)
+                cv2.circle(img_raw, (b[7], b[8]), 3, (0, 255, 255), thickness)
+                cv2.circle(img_raw, (b[9], b[10]), 3, (0, 255, 0), thickness)
+                cv2.circle(img_raw, (b[11], b[12]), 3, (255, 0, 0), thickness)
+                # cv2.line(img_raw, (b[5], b[6]), (b[7], b[8]), (0, 0, 255), 5)
+                # cv2.line(img_raw, (b[7], b[8]), (b[9], b[10]), (0, 255, 255), 5)
+                # cv2.line(img_raw, (b[9], b[10]), (b[11], b[12]), (0, 255, 0), 5)
+                # cv2.line(img_raw, (b[11], b[12]), (b[5], b[6]), (255, 0, 0), 5)
+
                 x1, y1, x2, y2 = b[0], b[1], b[2], b[3]
                 w = int(x2 - x1 + 1.0)
                 h = int(y2 - y1 + 1.0)

@@ -61,6 +61,7 @@ def get_args():
     parser.add_argument('--save_folder', default='./weights_card_20240614_512_320/', help='Location to save checkpoint models')
     parser.add_argument('--batch_size', default=4, type=int)
     parser.add_argument('--image_size', default=640, type=int)
+    parser.add_argument('--gpu_id', default=1, type=int)
     return parser.parse_args()
 
 
@@ -212,6 +213,7 @@ if __name__ == '__main__':
         cfg = cfg_mnet
     elif args.network == "resnet50":
         cfg = cfg_re50
+    cfg['gpu_id'] = args.gpu_id
     device, num_gpu, gpu_train = set_device(cfg['gpu_id'])
 
     # rgb_mean = (104, 117, 123)  # bgr order
